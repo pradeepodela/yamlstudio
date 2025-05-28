@@ -13,6 +13,8 @@ import PathBuilder from '@/components/PathBuilder';
 import SchemaBuilder from '@/components/SchemaBuilder';
 import SecurityBuilder from '@/components/SecurityBuilder';
 import YamlPreview from '@/components/YamlPreview';
+import { useAuth } from "../utils/AuthContext";
+import { handleSignOut } from "../utils/firebase-config";
 
 export interface ApiInfo {
   title: string;
@@ -99,6 +101,7 @@ export interface SecurityScheme {
 }
 
 const Index = () => {
+  const { user } = useAuth();
   const [apiInfo, setApiInfo] = useState<ApiInfo>({
     title: '',
     description: '',
@@ -346,145 +349,178 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto p-6">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            OpenAPI YAML Generator
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Create comprehensive OpenAPI specifications with an intuitive form-based interface. 
-            No more manual YAML writing!
-          </p>
-          <div className="flex justify-center gap-2 mt-4">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-              <FileText className="w-3 h-3 mr-1" />
-              OpenAPI 3.0.0
-            </Badge>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              <Plus className="w-3 h-3 mr-1" />
-              Form Builder
-            </Badge>
-            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-              <Settings className="w-3 h-3 mr-1" />
-              Live Preview
-            </Badge>
-          </div>
-        </div>
-
-        {/* YAML Import Section */}
-        <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5 text-purple-600" />
-              Import Existing YAML
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              value={importYaml}
-              onChange={(e) => setImportYaml(e.target.value)}
-              placeholder="Paste your existing OpenAPI YAML here to import and edit..."
-              className="min-h-[120px] font-mono text-sm"
-            />
-            <div className="flex gap-2">
-              <Button onClick={importFromYaml} className="flex-1">
-                <Upload className="w-4 h-4 mr-2" />
-                Import YAML
-              </Button>
+      {/* Auth Header */}
+      <nav className="bg-white shadow-sm mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-gray-900">YAML Studio</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src={user?.photoURL || ''}
+                  alt="Profile"
+                  className="h-8 w-8 rounded-full"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {user?.displayName}
+                </span>
+              </div>
               <Button 
-                variant="outline" 
-                onClick={() => setImportYaml('')}
-                className="flex-1"
+                variant="destructive" 
+                size="sm"
+                onClick={handleSignOut}
               >
-                Clear
+                Sign Out
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-blue-600" />
-                  API Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="info" className="text-xs">Info</TabsTrigger>
-                    <TabsTrigger value="servers" className="text-xs">Servers</TabsTrigger>
-                    <TabsTrigger value="paths" className="text-xs">Paths</TabsTrigger>
-                    <TabsTrigger value="schemas" className="text-xs">Schemas</TabsTrigger>
-                    <TabsTrigger value="security" className="text-xs">Security</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="info" className="mt-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <h3 className="font-semibold">API Information</h3>
-                    </div>
-                    <ApiInfoForm apiInfo={apiInfo} setApiInfo={setApiInfo} />
-                  </TabsContent>
-                  
-                  <TabsContent value="servers" className="mt-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Server className="w-4 h-4 text-green-600" />
-                      <h3 className="font-semibold">Server Configuration</h3>
-                    </div>
-                    <ServerForm servers={servers} setServers={setServers} />
-                  </TabsContent>
-                  
-                  <TabsContent value="paths" className="mt-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Plus className="w-4 h-4 text-purple-600" />
-                      <h3 className="font-semibold">API Endpoints</h3>
-                    </div>
-                    <PathBuilder 
-                      paths={paths} 
-                      setPaths={setPaths}
-                      schemas={schemas}
-                      securitySchemes={securitySchemes}
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="schemas" className="mt-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Database className="w-4 h-4 text-orange-600" />
-                      <h3 className="font-semibold">Data Schemas</h3>
-                    </div>
-                    <SchemaBuilder schemas={schemas} setSchemas={setSchemas} />
-                  </TabsContent>
-                  
-                  <TabsContent value="security" className="mt-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Shield className="w-4 h-4 text-red-600" />
-                      <h3 className="font-semibold">Security Schemes</h3>
-                    </div>
-                    <SecurityBuilder 
-                      securitySchemes={securitySchemes} 
-                      setSecuritySchemes={setSecuritySchemes} 
-                    />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+      {/* Existing YAML Studio Content */}
+      <div className="container mx-auto p-4">
+        <div className="grid gap-4">
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+              OpenAPI YAML Generator
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Create comprehensive OpenAPI specifications with an intuitive form-based interface. 
+              No more manual YAML writing!
+            </p>
+            <div className="flex justify-center gap-2 mt-4">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                <FileText className="w-3 h-3 mr-1" />
+                OpenAPI 3.0.0
+              </Badge>
+              <Badge variant="secondary" className="bg-green-100 text-green-700">
+                <Plus className="w-3 h-3 mr-1" />
+                Form Builder
+              </Badge>
+              <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                <Settings className="w-3 h-3 mr-1" />
+                Live Preview
+              </Badge>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  YAML Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <YamlPreview spec={generateYaml()} />
-              </CardContent>
-            </Card>
+          {/* YAML Import Section */}
+          <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="w-5 h-5 text-purple-600" />
+                Import Existing YAML
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                value={importYaml}
+                onChange={(e) => setImportYaml(e.target.value)}
+                placeholder="Paste your existing OpenAPI YAML here to import and edit..."
+                className="min-h-[120px] font-mono text-sm"
+              />
+              <div className="flex gap-2">
+                <Button onClick={importFromYaml} className="flex-1">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import YAML
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setImportYaml('')}
+                  className="flex-1"
+                >
+                  Clear
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-blue-600" />
+                    API Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-5">
+                      <TabsTrigger value="info" className="text-xs">Info</TabsTrigger>
+                      <TabsTrigger value="servers" className="text-xs">Servers</TabsTrigger>
+                      <TabsTrigger value="paths" className="text-xs">Paths</TabsTrigger>
+                      <TabsTrigger value="schemas" className="text-xs">Schemas</TabsTrigger>
+                      <TabsTrigger value="security" className="text-xs">Security</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="info" className="mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <h3 className="font-semibold">API Information</h3>
+                      </div>
+                      <ApiInfoForm apiInfo={apiInfo} setApiInfo={setApiInfo} />
+                    </TabsContent>
+                    
+                    <TabsContent value="servers" className="mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Server className="w-4 h-4 text-green-600" />
+                        <h3 className="font-semibold">Server Configuration</h3>
+                      </div>
+                      <ServerForm servers={servers} setServers={setServers} />
+                    </TabsContent>
+                    
+                    <TabsContent value="paths" className="mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Plus className="w-4 h-4 text-purple-600" />
+                        <h3 className="font-semibold">API Endpoints</h3>
+                      </div>
+                      <PathBuilder 
+                        paths={paths} 
+                        setPaths={setPaths}
+                        schemas={schemas}
+                        securitySchemes={securitySchemes}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="schemas" className="mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Database className="w-4 h-4 text-orange-600" />
+                        <h3 className="font-semibold">Data Schemas</h3>
+                      </div>
+                      <SchemaBuilder schemas={schemas} setSchemas={setSchemas} />
+                    </TabsContent>
+                    
+                    <TabsContent value="security" className="mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Shield className="w-4 h-4 text-red-600" />
+                        <h3 className="font-semibold">Security Schemes</h3>
+                      </div>
+                      <SecurityBuilder 
+                        securitySchemes={securitySchemes} 
+                        setSecuritySchemes={setSecuritySchemes} 
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-6">
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    YAML Preview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <YamlPreview spec={generateYaml()} />
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
