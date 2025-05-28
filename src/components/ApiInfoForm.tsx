@@ -77,7 +77,7 @@ const ApiInfoForm: React.FC<ApiInfoFormProps> = ({ apiInfo, setApiInfo }) => {
               id="contactName"
               value={apiInfo.contact?.name || ''}
               onChange={(e) => updateContact('name', e.target.value)}
-              placeholder="e.g., Praveen Kumar"
+              placeholder="e.g., pradeep"
               className="mt-1"
             />
           </div>
@@ -89,7 +89,7 @@ const ApiInfoForm: React.FC<ApiInfoFormProps> = ({ apiInfo, setApiInfo }) => {
               type="email"
               value={apiInfo.contact?.email || ''}
               onChange={(e) => updateContact('email', e.target.value)}
-              placeholder="e.g., praveen.am@zohocorp.com"
+              placeholder="e.g., odelapradeep12@gmail.com"
               className="mt-1"
             />
           </div>
