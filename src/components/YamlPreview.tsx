@@ -280,63 +280,58 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="outline" className="bg-blue-50">
-          <FileText className="w-3 h-3 mr-1" />
-          {pathCount} Paths
-        </Badge>
-        <Badge variant="outline" className="bg-orange-50">
-          <FileText className="w-3 h-3 mr-1" />
-          {schemaCount} Schemas
-        </Badge>
-        <Badge variant="outline" className="bg-green-50">
-          <FileText className="w-3 h-3 mr-1" />
-          {serverCount} Servers
-        </Badge>
-        <Badge variant="outline" className="bg-red-50">
-          <FileText className="w-3 h-3 mr-1" />
-          {securityCount} Security
-        </Badge>      </div>      
-      {/* Actions */}
-      <div className="flex gap-2">
-        <>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  onClick={user ? copyToClipboard : undefined} 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 relative" 
-                  disabled={!user}
-                >
-                  <Copy className="w-4 h-4 mr-1" />
-                  Copy YAML
-                  {!user && <Lock className="w-4 h-4 absolute right-2 text-gray-400" />}
-                </Button>
-              </TooltipTrigger>
-              {!user && <TooltipContent>Sign in to copy YAML</TooltipContent>}
-            </Tooltip>
+     <div className="flex gap-2 relative">
+  <TooltipProvider delayDuration={100}>
+    <div className="flex gap-2 flex-1 z-10">
+      <Tooltip>
+        <TooltipTrigger asChild>
+         <Button 
+  onClick={user ? copyToClipboard : () => toast({
+    title: "Sign in required",
+    description: "Please sign in to copy the YAML",
+  })} 
+  variant="outline" 
+  size="sm" 
+  className={`flex-1 ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+>
+  <span className="flex items-center">
+    <Copy className="w-4 h-4 mr-1" />
+    {user ? 'Copy YAML' : 'Sign in to copy'}
+    {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+  </span>
+</Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
+          {user ? 'Copy YAML to clipboard' : 'Sign in to copy YAML'}
+        </TooltipContent>
+      </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  onClick={user ? downloadYaml : undefined} 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 relative" 
-                  disabled={!user}
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  Download
-                  {!user && <Lock className="w-4 h-4 absolute right-2 text-gray-400" />}
-                </Button>
-              </TooltipTrigger>
-              {!user && <TooltipContent>Sign in to download YAML</TooltipContent>}
-            </Tooltip>
-          </TooltipProvider>
-        </>
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+         <Button 
+  onClick={user ? downloadYaml : () => toast({
+    title: "Sign in required",
+    description: "Please sign in to download the YAML",
+  })} 
+  variant="outline" 
+  size="sm" 
+  className={`flex-1 ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+>
+  <span className="flex items-center">
+    <Download className="w-4 h-4 mr-1" />
+    {user ? 'Download YAML' : 'Sign in to download'}
+    {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+  </span>
+</Button>
+
+        </TooltipTrigger>
+        <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
+          {user ? 'Download YAML file' : 'Sign in to download YAML'}
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  </TooltipProvider>
+</div>
 
       {/* YAML Preview */}
       <ScrollArea className="h-[500px] w-full border rounded-lg bg-gray-900 text-gray-100">
