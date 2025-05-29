@@ -13,8 +13,8 @@ import PathBuilder from '@/components/PathBuilder';
 import SchemaBuilder from '@/components/SchemaBuilder';
 import SecurityBuilder from '@/components/SecurityBuilder';
 import YamlPreview from '@/components/YamlPreview';
+import Navbar from "@/components/Navbar";
 import { useAuth } from "../utils/AuthContext";
-import { handleSignOut } from "../utils/firebase-config";
 
 export interface ApiInfo {
   title: string;
@@ -347,37 +347,8 @@ const Index = () => {
     updateGlobalSecurity(securitySchemes);
   }, [securitySchemes]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Auth Header */}
-      <nav className="bg-white shadow-sm mb-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">YAML Studio</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <img
-                  src={user?.photoURL || ''}
-                  alt="Profile"
-                  className="h-8 w-8 rounded-full"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {user?.displayName}
-                </span>
-              </div>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+  return (    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <Navbar />
 
       {/* Existing YAML Studio Content */}
       <div className="container mx-auto p-4">

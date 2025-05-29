@@ -1,16 +1,19 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Download, FileText } from 'lucide-react';
+import { Copy, Download, FileText, Lock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '../utils/AuthContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface YamlPreviewProps {
   spec: any;
 }
 
 const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
+  const { user } = useAuth();
+  
   const generateYaml = (obj: any, indent = 0): string => {
     const spaces = '  '.repeat(indent);
     let yaml = '';
@@ -293,19 +296,46 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
         <Badge variant="outline" className="bg-red-50">
           <FileText className="w-3 h-3 mr-1" />
           {securityCount} Security
-        </Badge>
-      </div>
-
+        </Badge>      </div>      
       {/* Actions */}
       <div className="flex gap-2">
-        <Button onClick={copyToClipboard} variant="outline" size="sm" className="flex-1">
-          <Copy className="w-4 h-4 mr-1" />
-          Copy YAML
-        </Button>
-        <Button onClick={downloadYaml} variant="outline" size="sm" className="flex-1">
-          <Download className="w-4 h-4 mr-1" />
-          Download
-        </Button>
+        <>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={user ? copyToClipboard : undefined} 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 relative" 
+                  disabled={!user}
+                >
+                  <Copy className="w-4 h-4 mr-1" />
+                  Copy YAML
+                  {!user && <Lock className="w-4 h-4 absolute right-2 text-gray-400" />}
+                </Button>
+              </TooltipTrigger>
+              {!user && <TooltipContent>Sign in to copy YAML</TooltipContent>}
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={user ? downloadYaml : undefined} 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 relative" 
+                  disabled={!user}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Download
+                  {!user && <Lock className="w-4 h-4 absolute right-2 text-gray-400" />}
+                </Button>
+              </TooltipTrigger>
+              {!user && <TooltipContent>Sign in to download YAML</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
+        </>
       </div>
 
       {/* YAML Preview */}
