@@ -94,7 +94,9 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
       return;
     }
 
-    setIsSubmitting(true);    try {      const response = await fetch(`${import.meta.env.VITE_API_URL}`, {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

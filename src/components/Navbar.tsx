@@ -11,15 +11,26 @@ export default function Navbar() {
   const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
 
   const handleSignIn = async () => {
-    try {
-      const result = await signInWithGoogle();
-      if (result) {
+  try {
+    const result = await signInWithGoogle();
+    if (result) {
+      const userEmail = result.email;
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/check?email=${encodeURIComponent(userEmail)}`);
+      const data = await response.json();
+ console.log('User info already exists:', data);
+      if (data.exists) {
+        console.log('User info already exists, skipping dialog.');
+      } else {
+        // User info does not exist, show dialog
         setShowUserInfoDialog(true);
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
     }
-  };
+  } catch (error) {
+    console.error('Sign in error:', error);
+  }
+};
+
 
   const handleDialogClose = (open: boolean) => {
     setShowUserInfoDialog(open);
