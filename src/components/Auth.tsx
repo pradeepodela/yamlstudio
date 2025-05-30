@@ -2,22 +2,33 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { signInWithGoogle } from "../utils/firebase-config";
 import { useAuth } from "../utils/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { UserInfoDialog } from "./UserInfoDialog";
 
 export default function Auth() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
-      navigate("/");
+      setShowUserInfoDialog(true);
     }
-  }, [user, navigate]);
+  }, [user]);
+
+  const handleDialogClose = (open: boolean) => {
+    setShowUserInfoDialog(open);
+    if (!open && user) {
+      navigate('/');
+    }
+  };
 
   const handleLogin = async () => {
     try {
-      await signInWithGoogle();
-      navigate("/");
+      const result = await signInWithGoogle();
+      if (result) {
+        setShowUserInfoDialog(true);
+      }
     } catch (error) {
       console.error("Error signing in with Google: ", error);
     }
@@ -44,6 +55,10 @@ export default function Auth() {
           Sign in with Google
         </Button>
       </div>
+      <UserInfoDialog 
+        open={showUserInfoDialog} 
+        onOpenChange={handleDialogClose}
+      />
     </div>
   );
 }

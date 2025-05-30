@@ -2,17 +2,27 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/utils/AuthContext';
 import { signInWithGoogle, handleSignOut } from '@/utils/firebase-config';
+import { useState } from 'react';
+import { UserInfoDialog } from './UserInfoDialog';
 
 export default function Navbar() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [showUserInfoDialog, setShowUserInfoDialog] = useState(false);
 
   const handleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      if (result) {
+        setShowUserInfoDialog(true);
+      }
     } catch (error) {
       console.error('Sign in error:', error);
     }
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setShowUserInfoDialog(open);
   };
 
   return (
@@ -55,6 +65,10 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+      <UserInfoDialog 
+        open={showUserInfoDialog} 
+        onOpenChange={handleDialogClose}
+      />
     </nav>
   );
 }
