@@ -15,7 +15,6 @@ export default function Navbar() {
     const result = await signInWithGoogle();
     if (result) {
       const userEmail = result.email;
-
       const response = await fetch(`${import.meta.env.VITE_API_URL}/check?email=${encodeURIComponent(userEmail)}`);
       const data = await response.json();
  console.log('User info already exists:', data);

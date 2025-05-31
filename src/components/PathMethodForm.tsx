@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -131,14 +130,13 @@ const PathMethodForm: React.FC<PathMethodFormProps> = ({
     }
     
     updateOperation('security', newSecurity);
-  };
-
-  const updateRequestBody = (field: string, value: any) => {
+  };  const updateRequestBody = (field: string, value: any) => {
     const requestBody = operation.requestBody || {
       required: false,
       content: {
         'application/json': {
-          schema: {}
+          schema: {},
+          'x-zia-agent-param-type': 'dynamic'
         }
       }
     };
@@ -147,6 +145,10 @@ const PathMethodForm: React.FC<PathMethodFormProps> = ({
       requestBody.required = value;
     } else if (field === 'schema') {
       requestBody.content['application/json'].schema = value;
+      // Ensure x-zia-agent-param-type exists
+      if (!requestBody.content['application/json']['x-zia-agent-param-type']) {
+        requestBody.content['application/json']['x-zia-agent-param-type'] = 'dynamic';
+      }
     }
     
     updateOperation('requestBody', requestBody);

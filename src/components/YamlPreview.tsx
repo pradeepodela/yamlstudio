@@ -130,20 +130,17 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
                 yaml += '          type: ' + param.schema.type + '\n';
               }
             });
-          }
-
-          if (operation.requestBody) {
-            yaml += '      requestBody:\n';
-            if (operation.requestBody.required) yaml += '        required: true\n';
-            yaml += '        content:\n';
-            yaml += '          application/json:\n';
-            yaml += '            schema:\n';
-            if (operation.requestBody.content?.['application/json']?.schema?.$ref) {
-              yaml += `              $ref: '${operation.requestBody.content['application/json'].schema.$ref}'\n`;
+          }          if (operation.requestBody) {            yaml = yaml + '      requestBody:\n';
+            if (operation.requestBody.required) yaml = yaml + '        required: true\n';
+            yaml = yaml + '        content:\n';
+            yaml = yaml + '          application/json:\n';            yaml = yaml + '            schema:\n';
+            const schema = operation.requestBody.content?.['application/json']?.schema;
+            if (schema?.$ref) {
+              yaml = yaml + `              $ref: '${schema.$ref}'\n`;
+            } else {
+              yaml = yaml + '              type: object\n';
             }
-            if (operation.requestBody['x-zia-agent-param-type']) {
-              yaml += `        x-zia-agent-param-type: ${operation.requestBody['x-zia-agent-param-type']}\n`;
-            }
+            yaml = yaml + '            x-zia-agent-param-type: dynamic\n';
           }
 
           if (operation.responses && operation.responses.length > 0) {
