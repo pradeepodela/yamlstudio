@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import yaml from 'js-yaml';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,6 +100,8 @@ export interface SecurityScheme {
   scopes?: { [key: string]: string };
 }
 
+const STORAGE_KEY = 'yamlstudio_state';
+
 const Index = () => {
   const { user } = useAuth();
   const [apiInfo, setApiInfo] = useState<ApiInfo>({
@@ -115,6 +117,45 @@ const Index = () => {
   const [globalSecurity, setGlobalSecurity] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('info');
   const [importYaml, setImportYaml] = useState('');
+
+  // Load data from localStorage when component mounts
+  useEffect(() => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      try {
+        const {
+          apiInfo: savedApiInfo,
+          servers: savedServers,
+          paths: savedPaths,
+          schemas: savedSchemas,
+          securitySchemes: savedSecuritySchemes,
+          globalSecurity: savedGlobalSecurity
+        } = JSON.parse(savedState);
+
+        savedApiInfo && setApiInfo(savedApiInfo);
+        savedServers && setServers(savedServers);
+        savedPaths && setPaths(savedPaths);
+        savedSchemas && setSchemas(savedSchemas);
+        savedSecuritySchemes && setSecuritySchemes(savedSecuritySchemes);
+        savedGlobalSecurity && setGlobalSecurity(savedGlobalSecurity);
+      } catch (error) {
+        console.error('Error loading saved state:', error);
+      }
+    }
+  }, []);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    const state = {
+      apiInfo,
+      servers,
+      paths,
+      schemas,
+      securitySchemes,
+      globalSecurity
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [apiInfo, servers, paths, schemas, securitySchemes, globalSecurity]);
 
   const generateYaml = () => {
     const openApiSpec = {

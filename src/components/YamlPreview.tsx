@@ -31,7 +31,6 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
           if (typeof item === 'object') {
             yaml += `${spaces}- `;
             const itemYaml = generateYaml(item, indent + 1);
-            // Handle first line differently for array items
             const lines = itemYaml.split('\n');
             yaml += lines[0].trim() + '\n';
             for (let i = 1; i < lines.length; i++) {
@@ -90,7 +89,7 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
         yaml += `  ${path}:\n`;
         Object.entries(methods).forEach(([method, operation]: [string, any]) => {
           yaml += `    ${method}:\n`;
-          if (operation.summary) yaml += `      summary: ${operation.summary}\n`;
+          if (operation.summary) yaml += `    summary: ${operation.summary}\n`;
           if (operation.description) yaml += `      description: ${operation.description}\n`;
           if (operation.operationId) yaml += `      operationId: ${operation.operationId}\n`;
           
