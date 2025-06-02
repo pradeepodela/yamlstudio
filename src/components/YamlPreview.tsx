@@ -2,18 +2,30 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Download, FileText, Lock } from 'lucide-react';
+import { Copy, Download, FileText, Lock, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../utils/AuthContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface YamlPreviewProps {
   spec: any;
+  onNewProject?: () => void;
 }
 
-const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
+const YamlPreview: React.FC<YamlPreviewProps> = ({ spec, onNewProject }) => {
   const { user } = useAuth();
   
+  const clearLocalStorage = () => {
+    localStorage.clear();
+    if (onNewProject) {
+      onNewProject();
+    }
+    toast({
+      title: "Project Reset",
+      description: "Started a new project, all form data has been cleared",
+    });
+  };
+
   const generateYaml = (obj: any, indent = 0): string => {
     const spaces = '  '.repeat(indent);
     let yaml = '';
@@ -300,9 +312,7 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
         <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
           {user ? 'Copy YAML to clipboard' : 'Sign in to copy YAML'}
         </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
+      </Tooltip>      <Tooltip>
         <TooltipTrigger asChild>
          <Button 
   onClick={user ? downloadYaml : () => toast({
@@ -319,10 +329,28 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec }) => {
     {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
   </span>
 </Button>
-
         </TooltipTrigger>
         <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
           {user ? 'Download YAML file' : 'Sign in to download YAML'}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button 
+            onClick={clearLocalStorage}
+            variant="outline" 
+            size="sm"
+            className="flex-1"
+          >
+            <span className="flex items-center">
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Start New Project
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
+          Clear all data and start a new project
         </TooltipContent>
       </Tooltip>
     </div>

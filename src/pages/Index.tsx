@@ -529,7 +529,22 @@ const Index = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <YamlPreview spec={generateYaml()} />
+                  <YamlPreview 
+                    spec={generateYaml()}
+                    onNewProject={() => {
+                      setApiInfo({
+                        title: '',
+                        description: '',
+                        version: '1.0.0'
+                      });
+                      setServers([]);
+                      setPaths([]);
+                      setSchemas([]);
+                      setSecuritySchemes([]);
+                      setGlobalSecurity([]);
+                      setActiveTab('info');
+                    }}
+                  />
                 </CardContent>
               </Card>
             </div>
