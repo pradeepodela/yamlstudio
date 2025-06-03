@@ -103,41 +103,8 @@ function createMarker(
           endColumn = valueIndex + value.length + 1;
         }
       }
-    }
-  }
+    }  }
   
-  // Create suggestions based on error type
-  let suggestion = error.suggestion || '';
-  if (!suggestion) {
-    const errorMsg = error.message.toLowerCase();
-    
-    if (errorMsg.includes('unexpected end of file')) {
-      suggestion = 'Add missing closing bracket or brace.';
-    } else if (errorMsg.includes('indentation')) {
-      const indentMatch = errorMsg.match(/expected (\d+) spaces/i);
-      if (indentMatch) {
-        suggestion = `Fix indentation to use ${indentMatch[1]} spaces.`;
-      } else {
-        suggestion = 'Correct the indentation to match the document structure.';
-      }
-    } else if (errorMsg.includes('duplicate key')) {
-      const keyMatch = errorMsg.match(/duplicate key ['"]([^'"]+)['"]/i);
-      if (keyMatch) {
-        suggestion = `Rename or remove the duplicate '${keyMatch[1]}' key.`;
-      }
-    } else if (errorMsg.includes('missing')) {
-      const fieldMatch = errorMsg.match(/missing (?:required )?(?:field|property) ['"]([^'"]+)['"]/i);
-      if (fieldMatch) {
-        suggestion = `Add the required '${fieldMatch[1]}' field.`;
-      }
-    } else if (errorMsg.includes('should be a')) {
-      const typeMatch = errorMsg.match(/should be a (\w+)/i);
-      if (typeMatch) {
-        suggestion = `Change the value type to ${typeMatch[1]}.`;
-      }
-    }
-  }
-
   return {
     severity,
     message: error.message,
@@ -161,11 +128,7 @@ function createMarker(
         endLineNumber,
         endColumn
       }
-    ] : [],
-    // Include the suggestion as part of the message for hover details
-    ...(suggestion && { 
-      message: `${error.message}\nSuggestion: ${suggestion}`
-    })
+    ] : []
   };
 }
 

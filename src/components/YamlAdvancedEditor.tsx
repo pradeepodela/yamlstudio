@@ -7,6 +7,8 @@ import { Badge } from './ui/badge';
 import { FileWarning, Bug, FileEdit } from 'lucide-react';
 import jsYaml from 'js-yaml';
 import './YamlAdvancedEditor.css';
+import { jumpToError } from '@/utils/editorHelpers';
+import * as monaco from 'monaco-editor';
 
 interface YamlAdvancedEditorProps {
   content: string;
@@ -18,23 +20,10 @@ const YamlAdvancedEditor: React.FC<YamlAdvancedEditorProps> = ({
   content, 
   onContentChange,
   className = ''
-}) => {
-  // Using a ref instead of state prevents unnecessary re-renders
-  const editorContentRef = useRef(content);
-  const [errors, setErrors] = useState<ValidationError[]>([]);
+}) => {  // Using a ref instead of state prevents unnecessary re-renders
+  const editorContentRef = useRef(content);  const [errors, setErrors] = useState<ValidationError[]>([]);
   const [warnings, setWarnings] = useState<ValidationError[]>([]);
-  
-  const getSuggestionForError = (error: Error) => {
-    const errorMsg = error.message;
-    if (errorMsg.includes('end of the stream')) {
-      return 'Check for missing closing quotes or brackets';
-    } else if (errorMsg.includes('mapping values')) {
-      return 'Make sure to use proper indentation and colons for key-value pairs';
-    } else if (errorMsg.includes('duplicate key')) {
-      return 'You have duplicate keys in your YAML, which is not allowed';
-    }
-    return 'Review your YAML syntax and indentation';
-  };
+  const [editorInstance, setEditorInstance] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
     
   // Update editor content only when external content changes and differs from current
   useEffect(() => {
@@ -58,8 +47,7 @@ const YamlAdvancedEditor: React.FC<YamlAdvancedEditorProps> = ({
       validateContent(value);
     }, 0);
   };
-  
-  // Separate function for validation to keep the main change handler clean
+    // Separate function for validation to keep the main change handler clean
   const validateContent = (value: string) => {
     // Skip validation for empty content
     if (!value || !value.trim()) {
@@ -76,8 +64,7 @@ const YamlAdvancedEditor: React.FC<YamlAdvancedEditorProps> = ({
     // Additional js-yaml validation as a fallback
     try {
       jsYaml.load(value);
-    } catch (error) {
-      // Only add this error if our validator didn't catch it
+    } catch (error) {      // Only add this error if our validator didn't catch it
       if (result.errors.length === 0) {
         const err = error as Error & { mark?: { line?: number, column?: number } };
         const newError: ValidationError = {
@@ -85,22 +72,27 @@ const YamlAdvancedEditor: React.FC<YamlAdvancedEditorProps> = ({
           column: err.mark?.column !== undefined ? err.mark.column : 0,
           message: err.message || 'Syntax error',
           severity: 'error',
-          type: 'syntax',
-          suggestion: getSuggestionForError(err)
+          type: 'syntax'
         };
         setErrors([newError]);
       }
     }
   };
 
+  // Handle clicking on an error to navigate to its location in the editor
+  const handleErrorClick = (error: ValidationError) => {
+    if (editorInstance && error.line >= 0) {
+      jumpToError(error, editorInstance);
+    }
+  };
   return (
-    <div className={cn("yaml-advanced-editor-container flex flex-col space-y-2", className)}>
-      <div className="yaml-editor-content w-full">
+    <div className={cn("yaml-advanced-editor-container flex flex-col space-y-2", className)}>      <div className="yaml-editor-content w-full">
         <MonacoYamlEditor
           content={content}
           onChange={handleEditorChange}
           className="h-[500px]"
           showErrorPanel={false}
+          onEditorReady={(editor) => setEditorInstance(editor)}
         />
       </div>
         
@@ -119,12 +111,12 @@ const YamlAdvancedEditor: React.FC<YamlAdvancedEditorProps> = ({
                 {warnings.length} Warning{warnings.length !== 1 ? 's' : ''}
               </Badge>
             )}
-          </div>
-          <ErrorPanel 
+          </div>          <ErrorPanel 
             errors={errors}
             warnings={warnings}
             infos={[]}
             className="max-h-[200px] overflow-auto"
+            onErrorClick={handleErrorClick}
           />
         </div>
       )}

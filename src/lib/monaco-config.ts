@@ -1,10 +1,5 @@
 import * as monaco from 'monaco-editor';
-import { loader } from '@monaco-editor/react';
 import { dump, load } from 'js-yaml';
-import { ValidationError } from '@/utils/yamlValidator';
-
-// Initialize Monaco loader
-loader.config({ monaco });
 
 // YAML formatting function
 async function formatYaml(text: string): Promise<string> {
@@ -42,21 +37,81 @@ monaco.languages.registerHoverProvider('yaml', {
         marker.severity === monaco.MarkerSeverity.Error ? 'error' :
         marker.severity === monaco.MarkerSeverity.Warning ? 'warning' : 'info';
       
-      let content = `**${marker.source || 'YAML Validator'}**: ${marker.message}`;
+      const severityIcon = 
+        marker.severity === monaco.MarkerSeverity.Error ? '🔴 ' :
+        marker.severity === monaco.MarkerSeverity.Warning ? '⚠️ ' : 'ℹ️ ';
+      
+      let content = `${severityIcon} **${severityClass.toUpperCase()}**: ${marker.message}`;
+      
+      // Add timestamp to error message to help identify when it was generated
+      content += `\n\n**Error detected at**: ${new Date().toLocaleTimeString()}`;
+      
+      // Add location information with enhanced explanation
+      content += `\n\n**Location**: Line ${marker.startLineNumber}`;
+      if (marker.startColumn && marker.endColumn) {
+        content += `, Column ${marker.startColumn}-${marker.endColumn} (characters from left)`;
+      }
+      
+      // Enhanced context visualization with line numbers
+      const contextLines = [];
+      // Get a few lines before and after for context
+      const startLine = Math.max(1, marker.startLineNumber - 2);
+      const endLine = Math.min(model.getLineCount(), marker.startLineNumber + 2);
+      
+      for (let i = startLine; i <= endLine; i++) {
+        const lineContent = model.getLineContent(i);
+        const lineNumber = String(i).padStart(2, ' ');
+        contextLines.push(`${lineNumber} | ${lineContent}`);
+      }
+      
+      content += `\n\n\`\`\`yaml\n${contextLines.join('\n')}\n\`\`\``;
+      
+      // Create clear pointer to highlight the error position with column numbers
+      if (marker.startLineNumber >= startLine && marker.startLineNumber <= endLine) {
+        const lineIdx = marker.startLineNumber - startLine;
+        const linePrefix = '   | '; // Matches the line number width + separator
+        const pointerLine = ' '.repeat(marker.startColumn - 1 + linePrefix.length) + 
+                           '^'.repeat(Math.max(1, marker.endColumn - marker.startColumn));
+        
+        // Add column numbers under the pointer for better clarity
+        let columnMarkers = '';
+        if (marker.endColumn - marker.startColumn > 3) {
+          columnMarkers = ' '.repeat(marker.startColumn - 1 + linePrefix.length) + 
+                         marker.startColumn + 
+                         ' '.repeat(Math.max(0, marker.endColumn - marker.startColumn - String(marker.startColumn).length - 1)) + 
+                         marker.endColumn;
+        }
+        
+        content += `\n\`\`\`\n${pointerLine}\n${columnMarkers ? columnMarkers + '\n' : ''}\`\`\``;
+      }
+      
+      // Add specific indentation error explanation
+      if (marker.message.toLowerCase().includes('indentation')) {
+        const lineContent = model.getLineContent(marker.startLineNumber);
+        const currentIndent = lineContent.length - lineContent.trimStart().length;
+        
+        content += `\n\n**Indentation Details**:`;
+        content += `\n- Current indentation: ${currentIndent} spaces`;
+        
+        // Try to extract expected indentation from error message
+        const indentMatch = marker.message.match(/expected (\d+) spaces/i) || 
+                           marker.message.match(/indent of (\d+)/i);
+        if (indentMatch) {
+          const expectedIndent = parseInt(indentMatch[1]);
+          content += `\n- Expected indentation: ${expectedIndent} spaces`;
+          content += `\n- Difference: ${expectedIndent > currentIndent ? 'Add' : 'Remove'} ${Math.abs(expectedIndent - currentIndent)} spaces`;
+        }
+      }
       
       // Add details and documentation if available
       if (marker.relatedInformation?.length) {
         content += `\n\n**Details:**\n${marker.relatedInformation[0].message}`;
       }
       
-      // Check if the message contains a suggestion (we append suggestions to the message in editorHelpers.ts)
-      const suggestionMatch = marker.message.match(/Suggestion: (.*)/);
-      if (suggestionMatch) {
-        // Extract the message and suggestion
-        const message = marker.message.replace(/\nSuggestion: .*/, '');
-        const suggestion = suggestionMatch[1];
-        
-        content = `**${marker.source || 'YAML Validator'}**: ${message}  \n\n**Suggestion**: ${suggestion}`;
+      // Add suggested fix hint if applicable
+      if (marker.severity === monaco.MarkerSeverity.Error || 
+          marker.severity === monaco.MarkerSeverity.Warning) {
+        content += '\n\n**Tip**: Hover over the error and press Ctrl+. to see available quick fixes';
       }
       
       return { 
@@ -79,6 +134,135 @@ monaco.languages.registerHoverProvider('yaml', {
 
 // Setup Monaco's YAML language features
 monaco.languages.register({ id: 'yaml' });
+
+// Add model change handler to revalidate and clear errors
+monaco.editor.onDidCreateModel((model) => {
+  if (model.getLanguageId() === 'yaml') {
+    // Initial validation
+    validateYamlContent(model);
+    
+    // Set up change listener
+    model.onDidChangeContent((e) => {
+      // Debounce validation to avoid excessive processing
+      clearTimeout((model as any)._yamlValidationTimeout);
+      (model as any)._yamlValidationTimeout = setTimeout(() => {
+        validateYamlContent(model);
+      }, 500);
+    });
+  }
+});
+
+// YAML validation function
+function validateYamlContent(model: monaco.editor.ITextModel) {
+  try {
+    // Try to parse the YAML to see if it's valid
+    const content = model.getValue();
+    load(content);
+    
+    // If we get here, YAML is valid - clear all markers
+    monaco.editor.setModelMarkers(model, 'yaml-validator', []);
+  } catch (error: any) {
+    // Process error to extract line/column information
+    const errorMsg = error.message || String(error);
+    
+    // Create marker based on error information
+    const markers: monaco.editor.IMarkerData[] = [];
+    
+    // Try to extract line and column from various error message formats
+    let line = 1;
+    let column = 1;
+    
+    // Match patterns like "line 5, column 10" or "at line 5, column 10"
+    const standardMatch = errorMsg.match(/(?:at\s+)?line\s+(\d+),?\s+column\s+(\d+)/i);
+    
+    // Match patterns like "(5:10)" or "position 5:10"
+    const positionMatch = errorMsg.match(/(?:position\s+)?(?:\()?(\d+):(\d+)(?:\))?/i);
+    
+    // Match line only like "line 5"
+    const lineOnlyMatch = errorMsg.match(/line\s+(\d+)/i);
+    
+    if (standardMatch) {
+      line = parseInt(standardMatch[1]);
+      column = parseInt(standardMatch[2]);
+    } else if (positionMatch) {
+      line = parseInt(positionMatch[1]);
+      column = parseInt(positionMatch[2]);
+    } else if (lineOnlyMatch) {
+      line = parseInt(lineOnlyMatch[1]);
+      // Try to find the problem in this line by searching for indentation or common issues
+      const lineContent = model.getLineContent(line);
+      
+      // Check if it's likely an indentation issue
+      if (errorMsg.toLowerCase().includes('indent') || errorMsg.toLowerCase().includes('mapping')) {
+        // For indentation issues, mark from the start of the line to the first non-whitespace
+        const firstNonWhitespace = lineContent.search(/\S/);
+        if (firstNonWhitespace !== -1) {
+          column = firstNonWhitespace + 1;
+        }
+      } else {
+        // For other issues, try to find problematic characters
+        const problematicCharIndex = lineContent.search(/[:"'{}[\]\\]/);
+        if (problematicCharIndex !== -1) {
+          column = problematicCharIndex + 1;
+        }
+      }
+    }
+    
+    // Ensure line and column are within valid range
+    line = Math.max(1, Math.min(line, model.getLineCount()));
+    const maxColumn = model.getLineMaxColumn(line);
+    column = Math.max(1, Math.min(column, maxColumn));
+    
+    // Create a more specific range if possible
+    const lineContent = model.getLineContent(line);
+    let endColumn = column + 1;
+    
+    // Try to determine the relevant token length
+    if (column < maxColumn) {
+      // If it's a key issue, select to the colon
+      const colonIndex = lineContent.indexOf(':', column - 1);
+      if (colonIndex !== -1 && colonIndex < column + 20) {
+        endColumn = colonIndex + 2;
+      } 
+      // If it's a string issue, select to the end of the string
+      else if (lineContent[column-1] === '"' || lineContent[column-1] === "'") {
+        const stringEnd = lineContent.indexOf(lineContent[column-1], column);
+        if (stringEnd !== -1) {
+          endColumn = stringEnd + 2;
+        } else {
+          endColumn = maxColumn;
+        }
+      }
+      // If it's an indentation issue, select to the first non-whitespace
+      else if (errorMsg.toLowerCase().includes('indent')) {
+        const firstNonWhitespace = lineContent.search(/\S/);
+        if (firstNonWhitespace !== -1) {
+          column = 1; // Start from beginning of line
+          endColumn = firstNonWhitespace + 2;
+        }
+      } 
+      // Otherwise, select the word at the position
+      else {
+        const wordMatch = lineContent.substr(column - 1).match(/^\w+/);
+        if (wordMatch) {
+          endColumn = column + wordMatch[0].length;
+        }
+      }
+    }
+    
+    markers.push({
+      severity: monaco.MarkerSeverity.Error,
+      message: errorMsg,
+      startLineNumber: line,
+      endLineNumber: line,
+      startColumn: column,
+      endColumn: endColumn,
+      source: 'YAML Validator'
+    });
+    
+    monaco.editor.setModelMarkers(model, 'yaml-validator', markers);
+  }
+}
 
 // Add YAML formatting provider
 monaco.languages.registerDocumentFormattingEditProvider('yaml', {
@@ -103,13 +287,9 @@ monaco.languages.registerCodeActionProvider('yaml', {
     const actions: monaco.languages.CodeAction[] = [];
     
     // Process marker-based code actions
-    context.markers.forEach(marker => {
-      // Handle different types of errors
+    context.markers.forEach(marker => {      // Handle different types of errors
       const errorMessage = marker.message.toLowerCase();
       let quickFix: monaco.languages.CodeAction | null = null;
-      
-      // Extract suggestion from message if present
-      const suggestionMatch = marker.message.match(/Suggestion: (.*)/);
       
       // Common YAML error patterns and their fixes
       if (errorMessage.includes('unexpected end of file') || errorMessage.includes('expected closing bracket')) {
@@ -262,28 +442,26 @@ monaco.languages.registerCodeActionProvider('yaml', {
                   }
                 }]
               }
-            };
-          }
+            };          }
         }
-      } else if (suggestionMatch) {
-        // Generic fix based on suggestion
-        const suggestion = suggestionMatch[1];
-        
-        quickFix = {
-          title: `Fix: ${suggestion}`,
-          kind: 'quickfix',
-          diagnostics: [marker],
-          isPreferred: false,
-          // This is a generic action that doesn't provide a concrete edit
-          command: {
-            id: 'yaml.showSuggestion',
-            title: suggestion,
-            arguments: [suggestion]
-          }
-        };
       }
       
       if (quickFix) {
+        // Add callback to validate and clear errors after applying the fix
+        const originalRun = quickFix.command?.run;
+        quickFix.command = {
+          id: 'yaml.applyFix',
+          title: quickFix.title,
+          run: (...args) => {
+            if (originalRun) {
+              originalRun(...args);
+            }
+            // Re-validate after a short delay to allow the edit to be applied
+            setTimeout(() => {
+              validateYamlContent(model);
+            }, 100);
+          }
+        };
         actions.push(quickFix);
       }
     });
@@ -307,62 +485,75 @@ monaco.languages.setMonarchTokensProvider('yaml', {
   tokenizer: {
     root: [
       // Keys
-      [/^(\s*)([\w\-_]+)(:)(\s*)(.+)?/, ['white', 'variable', 'delimiter', 'white', 'string']],
+      [/^(\s*)([\w\-_\.\/]+)(:)(\s*)(.+)?/, ['white', 'variable', 'delimiter', 'white', 'string']],
       // Arrays
-      [/^(\s*)(-\s)(.+)/, ['white', 'delimiter', 'string']],
+      [/^(\s*)(-\s)(.+)?/, ['white', 'delimiter', 'string']],
       // Comments
       [/#.*$/, 'comment'],
-      // Strings
-      [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-terminated string
-      [/'([^'\\]|\\.)*$/, 'string.invalid'],  // non-terminated string
-      [/"/, 'string', '@string."'],
-      [/'/, 'string', '@string.\''],
-      // Numbers
-      [/\d*\.\d+([eE][-+]?\d+)?/, 'number.float'],
-      [/0[xX][0-9a-fA-F]+/, 'number.hex'],
-      [/\d+/, 'number'],
-      // Booleans
-      [/\b(true|false)\b/, 'keyword'],
-      // Null
-      [/\b(null)\b/, 'keyword'],
-    ],
-    string: [
-      [/[^\\"']+/, 'string'],
-      [/@escapes/, 'string.escape'],
-      [/\\./, 'string.escape.invalid'],
-      [/["']/, { cases: {
-        '$#==$S2': { token: 'string', next: '@pop' },
-        '@default': 'string'
-      }}]
-    ]
-  }
-});
+      // Multi-line strings with indicators
+      [/^(\s*)([\w\-_\.\/]+)(:)(\s*)(>|[|])(\s*)$/, ['white', 'variable', 'delimiter', 'white', 'string', 'white']],
+      // Special keywords { open: '\'', close: '\'' }
+      [/\b(true|false|null|undefined|NaN|Infinity)\b/, 'keyword'],  ],
 
-// Configure YAML language feature defaults
-monaco.languages.setLanguageConfiguration('yaml', {
-  comments: {
-    lineComment: '#'
-  },
-  brackets: [
-    ['{', '}'],
-    ['[', ']'],
-    ['(', ')']
-  ],
-  autoClosingPairs: [
-    { open: '{', close: '}' },
-    { open: '[', close: ']' },
-    { open: '(', close: ')' },
-    { open: '"', close: '"' },
-    { open: '\'', close: '\'' }
-  ],
-  surroundingPairs: [
-    { open: '{', close: '}' },
-    { open: '[', close: ']' },
-    { open: '(', close: ')' },
-    { open: '"', close: '"' },
-    { open: '\'', close: '\'' }
-  ],
-  folding: {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+});    { open: '"', close: '"' },    { open: '(', close: ')' },    { open: '[', close: ']' },    { open: '{', close: '}' },  surroundingPairs: [  ],    { open: '\'', close: '\'' }    { open: '"', close: '"' },    { open: '(', close: ')' },    { open: '[', close: ']' },    { open: '{', close: '}' },  autoClosingPairs: [  ],    ['(', ')']    ['[', ']'],    ['{', '}'],  brackets: [  },    lineComment: '#'  comments: {monaco.languages.setLanguageConfiguration('yaml', {// Configure YAML language feature defaults});  }    ]      }}]        '@default': 'string'        '$#==$S2': { token: 'string', next: '@pop' },      [/["']/, { cases: {      [/\\./, 'string.escape.invalid'],      [/@escapes/, 'string.escape'],      [/[^\\"']+/, 'string'],    string: [    ],      [/(![\w\d\/]+)/, 'tag'],      [/(!![\w\d\/]+)/, 'tag'],      // Tags      [/(\*[\w\d]+)/, 'tag'],      [/(&[\w\d]+)/, 'tag'],      // Anchors and aliases      [/^\.\.\.$/, 'delimiter.yaml'],      [/^---$/, 'delimiter.yaml'],      // Document separators      [/\b(https?:\/\/[\w\d\.\-\/]+)\b/, 'string.link'],      // URL-like patterns       [/\b0b[01]+\b/, 'number.binary'],      [/\b0o[0-7]+\b/, 'number.octal'],      [/\b0x[\da-fA-F]+\b/, 'number.hex'],      [/\b\d+\b/, 'number'],      [/\b\d+\.[\w\d_]*\b/, 'number.float'],      // Numbers      [/'/, 'string', '@string.\''],      [/"/, 'string', '@string."'],      [/'([^'\\]|\\.)*$/, 'string.invalid'],  // non-terminated string      [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-terminated string      // Strings  folding: {
     markers: {
       start: new RegExp('^\\s*#\\s*region\\b'),
       end: new RegExp('^\\s*#\\s*endregion\\b')

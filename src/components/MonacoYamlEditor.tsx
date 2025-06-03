@@ -9,13 +9,15 @@ interface MonacoYamlEditorProps {
   onChange: (content: string) => void;
   className?: string;
   showErrorPanel?: boolean;
+  onEditorReady?: (editor: monaco.editor.IStandaloneCodeEditor) => void;
 }
 
 export const MonacoYamlEditor: React.FC<MonacoYamlEditorProps> = ({
   content,
   onChange,
   className = '',
-  showErrorPanel = true
+  showErrorPanel = true,
+  onEditorReady
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,10 +101,15 @@ export const MonacoYamlEditor: React.FC<MonacoYamlEditorProps> = ({
           }
         }
       }
-    });
-
-    // Initial validation
-    validateAndUpdateMarkers(content);    return () => {
+    });    // Initial validation
+    validateAndUpdateMarkers(content);
+    
+    // Notify parent component that editor is ready
+    if (onEditorReady && editorRef.current) {
+      onEditorReady(editorRef.current);
+    }
+    
+    return () => {
       if (editorRef.current) {
         editorRef.current.dispose();
       }

@@ -39,7 +39,6 @@ export interface ValidationResult {
   details?: string;
   severity?: ErrorSeverity;
   path?: string[];
-  suggestion?: string;
 }
 
 // Schema types supported by the validator
@@ -138,15 +137,13 @@ export const validateYaml = (yamlContent: string): ValidationResult => {
   errors.length = 0;
   warnings.length = 0;
   infos.length = 0;
-
   if (!yamlContent.trim()) {
     const error: ValidationError = {
       line: 0,
       column: 0,
       message: 'YAML content cannot be empty',
       severity: 'error',
-      type: 'syntax',
-      suggestion: 'Add some YAML content to get started'
+      type: 'syntax'
     };
     errors.push(error);
     return {
@@ -155,8 +152,7 @@ export const validateYaml = (yamlContent: string): ValidationResult => {
       errors,
       warnings,
       infos,
-      severity: 'error',
-      suggestion: error.suggestion
+      severity: 'error'
     };
   }
 
@@ -165,43 +161,36 @@ export const validateYaml = (yamlContent: string): ValidationResult => {
     try {
       yaml.load(yamlContent);
     } catch (error: unknown) {
-      const yamlError = error as YamlError;
-      const validationError: ValidationError = {
+      const yamlError = error as YamlError;      const validationError: ValidationError = {
         line: yamlError.mark?.line || 0,
         column: yamlError.mark?.column || 0,
-        message: 'YAML Syntax Error',
+        message: yamlError.message || 'YAML Syntax Error',
         severity: 'error',
         type: 'syntax',
-        details: yamlError.message,
-        suggestion: getSyntaxErrorSuggestion(yamlError.message)
+        details: yamlError.message
       };
       errors.push(validationError);
       return {
-        isValid: false,
-        errors,
+        isValid: false,        errors,
         warnings,
         infos,
         error: validationError.message,
         details: yamlError.message,
         lineNumber: validationError.line,
         column: validationError.column,
-        severity: 'error',
-        suggestion: validationError.suggestion
+        severity: 'error'
       };
     }
 
     // Then validate against our schema
-    validator.validate([yamlContent]);
-
-    // If we have warnings but no errors
+    validator.validate([yamlContent]);    // If we have warnings but no errors
     if (warnings.length > 0 && errors.length === 0) {
       return {
         isValid: true,
         errors,
         warnings,
         infos,
-        severity: 'warning',
-        suggestion: 'Your YAML is valid but could be improved'
+        severity: 'warning'
       };
     }
 
@@ -222,17 +211,14 @@ export const validateYaml = (yamlContent: string): ValidationResult => {
       severity: 'info'
     };
 
-  } catch (error: unknown) {
-    const validationError: ValidationError = {
+  } catch (error: unknown) {    const validationError: ValidationError = {
       line: 0,
       column: 0,
-      message: 'OpenAPI Schema Validation Error',
+      message: error instanceof Error ? error.message : 'Schema Validation Error',
       severity: 'error',
       type: 'schema',
       details: error instanceof Error ? error.message : String(error)
-    };
-
-    if (error instanceof Error) {
+    };    if (error instanceof Error) {
       const details = error.message;
       
       // Try to extract line and column information
@@ -247,13 +233,9 @@ export const validateYaml = (yamlContent: string): ValidationResult => {
       if (pathMatch) {
         validationError.source = pathMatch[1];
       }
-
-      // Add suggestion
-      validationError.suggestion = getSchemaErrorSuggestion(details);
     }
 
-    errors.push(validationError);
-    return {
+    errors.push(validationError);    return {
       isValid: false,
       errors,
       warnings,
@@ -263,54 +245,6 @@ export const validateYaml = (yamlContent: string): ValidationResult => {
       column: validationError.column,
       details: validationError.details,
       severity: 'error',
-      path: validationError.source?.split('.'),
-      suggestion: validationError.suggestion
-    };
-  }
+      path: validationError.source?.split('.')
+    };  }
 };
-
-// Helper function to provide suggestions for syntax errors
-function getSyntaxErrorSuggestion(error: string): string {
-  if (error.includes('end of the stream')) {
-    return 'Check for missing closing brackets or quotes';
-  }
-  if (error.includes('duplicate key')) {
-    return 'Remove or rename the duplicate property';
-  }
-  if (error.includes('bad indentation')) {
-    return 'Fix indentation - use 2 spaces per level';
-  }
-  if (error.includes('tab characters')) {
-    return 'Replace tabs with spaces for indentation';
-  }
-  if (error.includes('flow map')) {
-    return 'Check your YAML structure - make sure objects are properly formatted';
-  }
-  if (error.includes('trailing comma')) {
-    return 'Remove trailing comma - YAML does not support trailing commas';
-  }
-  return 'Check your YAML syntax against the OpenAPI specification';
-}
-
-// Helper function to provide suggestions for schema errors
-function getSchemaErrorSuggestion(error: string): string {
-  if (error.includes('required property')) {
-    return 'Add the missing required property';
-  }
-  if (error.includes('invalid type')) {
-    return 'Correct the property type according to the OpenAPI schema';
-  }
-  if (error.includes('paths')) {
-    return 'Every API needs at least one path - add an endpoint';
-  }
-  if (error.includes('info')) {
-    return 'Add API information including title and version';
-  }
-  if (error.includes('additionalProperty')) {
-    return 'Remove unknown property - it is not defined in the schema';
-  }
-  if (error.includes('enum')) {
-    return 'Use one of the allowed values for this field';
-  }
-  return 'Validate your schema against the OpenAPI specification';
-}
