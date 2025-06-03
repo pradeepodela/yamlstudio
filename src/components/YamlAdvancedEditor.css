@@ -1,0 +1,37 @@
+/* YamlAdvancedEditor styles */
+.yaml-advanced-editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.yaml-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.yaml-editor-content {
+  flex-grow: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+}
+
+.yaml-editor-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.yaml-editor-error-panel {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background) / 0.5);
+}

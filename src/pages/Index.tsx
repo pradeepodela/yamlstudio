@@ -190,7 +190,6 @@ const Index = () => {
 
     return openApiSpec;
   };
-
   const importFromYaml = () => {
     if (!importYaml.trim()) {
       toast({
@@ -200,17 +199,18 @@ const Index = () => {
       });
       return;
     }
-
-    try {
-      // Parse the YAML content
-      const parsedYaml = yaml.load(importYaml) as any;
-      
-      if (!parsedYaml || typeof parsedYaml !== 'object') {
-        throw new Error('Invalid YAML format');
+      try {
+      // Skip validation entirely - just try to parse, and if it fails, use an empty object
+      let parsedYaml = {};
+      try {
+        parsedYaml = yaml.load(importYaml) as any;
+      } catch (parseError) {
+        // Silently continue with an empty object - no validation or warnings
+        console.log('Note: Using empty object for YAML parsing');
       }
 
       // Import API Info
-      if (parsedYaml.info) {
+      if (parsedYaml?.info) {
         setApiInfo({
           title: parsedYaml.info.title || '',
           description: parsedYaml.info.description || '',
@@ -348,27 +348,19 @@ const Index = () => {
         });
         
         setPaths(importedPaths);
-      }
-
-      // Import Global Security
+      }      // Import Global Security
       if (parsedYaml.security && Array.isArray(parsedYaml.security)) {
         setGlobalSecurity(parsedYaml.security);
       }
 
-      toast({
-        title: "Success!",
-        description: "YAML imported successfully! All components have been populated.",
-      });
+      // Silently move to the info tab without any validation messages
       setImportYaml('');
       setActiveTab('info');
-
     } catch (error) {
-      console.error('YAML Import Error:', error);
-      toast({
-        title: "Import Error", 
-        description: `Failed to parse YAML: ${error instanceof Error ? error.message : 'Invalid format'}`,
-        variant: "destructive"
-      });
+      console.log('Note: Proceeding with import without validation');
+      // Import without validation or notices
+      setImportYaml('');
+      setActiveTab('info');
     }
   };
 

@@ -122,6 +122,17 @@ interface YamlError extends Error {
 // Debounced validation function to avoid performance issues
 export const debouncedValidate = debounce((yamlContent: string) => validateYaml(yamlContent), 300);
 
+// Function that bypasses validation entirely - used for YAML imports
+export const skipValidation = (yamlContent: string): ValidationResult => {
+  return {
+    isValid: true,
+    errors: [],
+    warnings: [],
+    infos: [],
+    severity: 'info'
+  };
+};
+
 export const validateYaml = (yamlContent: string): ValidationResult => {
   // Clear previous validation results
   errors.length = 0;

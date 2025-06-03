@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Download, FileText, Lock, RefreshCw } from 'lucide-react';
+import { Copy, Download, RefreshCw, Lock, FileText, FileCode } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../utils/AuthContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import YamlAdvancedEditor from './YamlAdvancedEditor';
+import { OpenAPISpec, Server, SecurityRequirement } from '@/types/openapi';
 
 interface YamlPreviewProps {
   spec: any;
@@ -14,6 +16,7 @@ interface YamlPreviewProps {
 
 const YamlPreview: React.FC<YamlPreviewProps> = ({ spec, onNewProject }) => {
   const { user } = useAuth();
+  const [yamlContent, setYamlContent] = useState<string>('');
   
   const clearLocalStorage = () => {
     localStorage.clear();
@@ -249,6 +252,11 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec, onNewProject }) => {
 
   const yamlString = generateProperYaml(spec);
 
+  // Update the YAML content when the spec changes
+  React.useEffect(() => {
+    setYamlContent(yamlString);
+  }, [yamlString]);
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(yamlString);
     toast({
@@ -285,84 +293,123 @@ const YamlPreview: React.FC<YamlPreviewProps> = ({ spec, onNewProject }) => {
 
   const { pathCount, schemaCount, serverCount, securityCount } = getStats();
 
+  // Handle content change from the advanced editor
+  const handleYamlContentChange = (content: string) => {
+    setYamlContent(content);
+    // You might want to parse this YAML and update the main spec if needed
+  };
+
   return (
     <div className="space-y-4">
       {/* Stats */}
-     <div className="flex gap-2 relative">
-  <TooltipProvider delayDuration={100}>
-    <div className="flex gap-2 flex-1 z-10">
-      <Tooltip>
-        <TooltipTrigger asChild>
-         <Button 
-  onClick={user ? copyToClipboard : () => toast({
-    title: "Sign in required",
-    description: "Please sign in to copy the YAML",
-  })} 
-  variant="outline" 
-  size="sm" 
-  className={`flex-1 ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
->
-  <span className="flex items-center">
-    <Copy className="w-4 h-4 mr-1" />
-    {user ? 'Copy YAML' : 'Sign in to copy'}
-    {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-  </span>
-</Button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
-          {user ? 'Copy YAML to clipboard' : 'Sign in to copy YAML'}
-        </TooltipContent>
-      </Tooltip>      <Tooltip>
-        <TooltipTrigger asChild>
-         <Button 
-  onClick={user ? downloadYaml : () => toast({
-    title: "Sign in required",
-    description: "Please sign in to download the YAML",
-  })} 
-  variant="outline" 
-  size="sm" 
-  className={`flex-1 ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
->
-  <span className="flex items-center">
-    <Download className="w-4 h-4 mr-1" />
-    {user ? 'Download YAML' : 'Sign in to download'}
-    {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-  </span>
-</Button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
-          {user ? 'Download YAML file' : 'Sign in to download YAML'}
-        </TooltipContent>
-      </Tooltip>
+      <div className="flex gap-2 relative">
+        <TooltipProvider delayDuration={100}>
+          <div className="flex gap-2 flex-1 z-10">
+            <Tooltip>
+              <TooltipTrigger asChild>
+               <Button 
+                onClick={user ? copyToClipboard : () => toast({
+                  title: "Sign in required",
+                  description: "Please sign in to copy the YAML",
+                })} 
+                variant="outline" 
+                size="sm" 
+                className={`flex-1 ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span className="flex items-center">
+                  <Copy className="w-4 h-4 mr-1" />
+                  {user ? 'Copy YAML' : 'Sign in to copy'}
+                  {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                </span>
+              </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
+                {user ? 'Copy YAML to clipboard' : 'Sign in to copy YAML'}
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+               <Button 
+                onClick={user ? downloadYaml : () => toast({
+                  title: "Sign in required",
+                  description: "Please sign in to download the YAML",
+                })} 
+                variant="outline" 
+                size="sm" 
+                className={`flex-1 ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span className="flex items-center">
+                  <Download className="w-4 h-4 mr-1" />
+                  {user ? 'Download YAML' : 'Sign in to download'}
+                  {!user && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                </span>
+              </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
+                {user ? 'Download YAML file' : 'Sign in to download YAML'}
+              </TooltipContent>
+            </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button 
-            onClick={clearLocalStorage}
-            variant="outline" 
-            size="sm"
-            className="flex-1"
-          >
-            <span className="flex items-center">
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Start New Project
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={clearLocalStorage}
+                  variant="outline" 
+                  size="sm"
+                  className="flex-1"
+                >
+                  <span className="flex items-center">
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    Start New Project
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
+                Clear all data and start a new project
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      </div>
+
+      {/* YAML Preview or Editor based on authentication status */}
+      {user ? (
+        // Advanced Editor Mode for signed-up users
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between p-2 bg-secondary/20 border-b">
+            <Badge variant="outline" className="bg-primary/20">
+              <FileCode className="w-4 h-4 mr-1" />
+              Advanced Editor Mode
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              Full editing with error detection
             </span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="bg-white text-gray-900 border shadow-sm z-50">
-          Clear all data and start a new project
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  </TooltipProvider>
-</div>
-
-      {/* YAML Preview */}
-      <ScrollArea className="h-[500px] w-full border rounded-lg bg-gray-900 text-gray-100">
-        <pre className="p-4 text-xs font-mono leading-relaxed">
-          <code>{yamlString || '# Configure your API above to see the YAML preview'}</code>
-        </pre>
-      </ScrollArea>
+          </div>
+          <YamlAdvancedEditor 
+            content={yamlContent} 
+            onContentChange={handleYamlContentChange}
+          />
+        </div>
+      ) : (
+        // Basic Preview Mode for non-signed-up users
+        <div>
+          <div className="flex items-center justify-between p-2 bg-secondary/20 border rounded-t-lg">
+            <Badge variant="outline" className="bg-gray-100">
+              <FileText className="w-4 h-4 mr-1" />
+              Preview Mode
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              Sign in for advanced editing features
+            </span>
+          </div>
+          <ScrollArea className="h-[500px] w-full border border-t-0 rounded-b-lg bg-gray-900 text-gray-100">
+            <pre className="p-4 text-xs font-mono leading-relaxed">
+              <code>{yamlString || '# Configure your API above to see the YAML preview'}</code>
+            </pre>
+          </ScrollArea>
+        </div>
+      )}
 
       {/* Validation Info */}
       {spec.info?.title && (
