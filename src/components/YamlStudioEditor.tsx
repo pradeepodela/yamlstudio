@@ -180,7 +180,10 @@ paths:
     const newOutput = `${terminalOutput}\n$ ${terminalCommand}\n`;
     setTerminalOutput(newOutput);
 
-    // Process the command - for this demo, we'll just simulate some simple commands
+    // Process the comm
+    // 
+    // 
+    // and - for this demo, we'll just simulate some simple commands
     const cmd = terminalCommand.trim().toLowerCase();
     let response = '';
 
